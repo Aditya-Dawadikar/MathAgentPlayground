@@ -1,0 +1,21 @@
+services:
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: local-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:1b}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-24h}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - ollama-data:/root/.ollama
+    gpus: all
+
+volumes:
+  ollama-data:
