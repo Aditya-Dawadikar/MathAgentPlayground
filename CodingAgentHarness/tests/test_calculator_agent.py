@@ -1,4 +1,6 @@
+import importlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -11,12 +13,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.agent import build_agent
-
-
 TEST_CASES = json.loads(
     (Path(__file__).parent / "data" / "tool_selection_cases.json").read_text(encoding="utf-8")
 )
+
+DEFAULT_AGENT_MODULE = "app.agent"
 
 tool_eval = create_json_match_evaluator(
     # feedback_key = "tool_selection",
@@ -89,10 +90,29 @@ def extract_tool_calls(result):
     
     return calls
 
+
+def resolve_agent_module_name(pytestconfig=None):
+    if pytestconfig is not None:
+        agent_module = pytestconfig.getoption("agent_module")
+        if agent_module:
+            return agent_module
+
+    return os.getenv("AGENT_MODULE", DEFAULT_AGENT_MODULE)
+
+
+def load_build_agent(agent_module_name):
+    agent_module = importlib.import_module(agent_module_name)
+    return agent_module.build_agent
+
+
+@pytest.fixture(scope="session")
+def agent_builder(pytestconfig):
+    return load_build_agent(resolve_agent_module_name(pytestconfig))
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", TEST_CASES, ids=[c["id"] for c in TEST_CASES])
-async def test_agent_tool_selection(case):
-    agent = build_agent(with_memory=False)
+async def test_agent_tool_selection(case, agent_builder):
+    agent = agent_builder(with_memory=False)
 
     result = await agent.ainvoke({"messages": [HumanMessage(content=case["prompt"])]})
 
