@@ -1,0 +1,113 @@
+[
+  {
+    "id": "add-basic",
+    "prompt": "What is 14 plus 9?",
+    "expected_tool": "add",
+    "expected_arguments": {
+      "a": 14,
+      "b": 9
+    }
+  },
+  {
+    "id": "add-sum-language",
+    "prompt": "Find the sum of 2.5 and 7.5.",
+    "expected_tool": "add",
+    "expected_arguments": {
+      "a": 2.5,
+      "b": 7.5
+    }
+  },
+  {
+    "id": "add-sum-language-2",
+    "prompt": "Find the sum of twenty five and 7.",
+    "expected_tool": "add",
+    "expected_arguments": {
+      "a": 25,
+      "b": 7
+    }
+  },
+  {
+    "id": "subtract-basic",
+    "prompt": "Subtract 18 from 45.",
+    "expected_tool": "subtract",
+    "expected_arguments": {
+      "a": 45,
+      "b": 18
+    }
+  },
+  {
+    "id": "subtract-difference-language",
+    "prompt": "What is the difference between 100 and 63?",
+    "expected_tool": "subtract",
+    "expected_arguments": {
+      "a": 100,
+      "b": 63
+    }
+  },
+  {
+    "id": "multiply-basic",
+    "prompt": "Multiply 6 by 7.",
+    "expected_tool": "multiply",
+    "expected_arguments": {
+      "a": 6,
+      "b": 7
+    }
+  },
+  {
+    "id": "multiply-product-language",
+    "prompt": "What is the product of 3.5 and 8?",
+    "expected_tool": "multiply",
+    "expected_arguments": {
+      "a": 3.5,
+      "b": 8
+    }
+  },
+  {
+    "id": "divide-basic",
+    "prompt": "Divide 144 by 12.",
+    "expected_tool": "divide",
+    "expected_arguments": {
+      "a": 144,
+      "b": 12
+    }
+  },
+  {
+    "id": "divide-quotient-language",
+    "prompt": "What is the quotient when 81 is divided by 9?",
+    "expected_tool": "divide",
+    "expected_arguments": {
+      "a": 81,
+      "b": 9
+    }
+  },
+  {
+    "id": "power-basic",
+    "prompt": "What is 2 raised to the power of 5?",
+    "expected_tool": "power",
+    "expected_arguments": {
+      "base": 2,
+      "exponent": 5
+    }
+  },
+  {
+    "id": "power-squared-language",
+    "prompt": "Calculate 9 squared.",
+    "expected_tool": "power",
+    "expected_arguments": {
+      "base": 9,
+      "exponent": 2
+    }
+  },
+  {
+    "id": "datetime-current-time",
+    "prompt": "What time is it right now?",
+    "expected_tool": "get_current_datetime",
+    "expected_arguments": {}
+  },
+  {
+    "id": "datetime-current-date",
+    "prompt": "Give me the current date and time.",
+    "expected_tool": "get_current_datetime",
+    "expected_arguments": {}
+  }
+]
