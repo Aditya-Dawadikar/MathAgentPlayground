@@ -17,7 +17,7 @@ TEST_CASES = json.loads(
     (Path(__file__).parent / "data" / "tool_selection_cases.json").read_text(encoding="utf-8")
 )
 
-DEFAULT_AGENT_MODULE = "app.agent"
+DEFAULT_AGENT_MODULE = "app.agent_tool_call_correctness_v1"
 
 tool_eval = create_json_match_evaluator(
     # feedback_key = "tool_selection",

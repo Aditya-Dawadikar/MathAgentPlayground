@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.agent import build_agent
+from MathAgentHarness.app.agent_tool_call_correctness_v1 import build_agent
 from app.models import ChatRequest, ChatResponse
 
 load_dotenv()
