@@ -4,20 +4,23 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from MathAgentHarness.app.agent_tool_call_correctness_v1 import build_agent
-from app.models import ChatRequest, ChatResponse
+from agent_tool_call_correctness_v1 import build_agent
+from planner_agent_v1 import build_agent as build_planner_agent
+from models import ChatRequest, ChatResponse, PlanRequest
 
 load_dotenv()
 
 _stateless_agent = None
 _stateful_agent = None
+_stateless_planner_agent = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _stateless_agent, _stateful_agent
+    global _stateless_agent, _stateful_agent, _stateless_planner_agent
     _stateless_agent = build_agent(with_memory=False)
     _stateful_agent = build_agent(with_memory=True)
+    _stateless_planner_agent = build_planner_agent(with_memory=False)
     yield
 
 
@@ -63,5 +66,19 @@ async def session_chat(session_id: str, req: ChatRequest):
             response=result["messages"][-1].content,
             session_id=session_id,
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/plan", response_model=ChatResponse, summary="Stateless single-turn chat")
+async def plan(req: PlanRequest):
+    """Send a message and get a response. No conversation history is retained."""
+    messages = []
+    if getattr(req, "system_prompt", None) is not None:
+        messages.append(SystemMessage(content=req.system_prompt))
+    messages.append(HumanMessage(content=req.problem))
+
+    try:
+        result = await _stateless_planner_agent.ainvoke({"messages": messages})
+        return ChatResponse(response=result["messages"][-1].content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

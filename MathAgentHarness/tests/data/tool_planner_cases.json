@@ -1,0 +1,363 @@
+[
+	{
+		"id": "ambiguous-altogether-leftover-shared",
+		"category": "ambiguous_language",
+		"order_sensitive": true,
+		"should_decline": false,
+		"prompt": "A club had 48 snacks. It gave out 19, and then the rest were shared equally among 29 students. What plan should the agent follow?",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "subtract",
+				"arguments": {
+					"a": 48,
+					"b": 19
+				},
+				"purpose": "Find how many snacks are left after some were given out."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "divide",
+				"arguments": {
+					"a": 29,
+					"b": 29
+				},
+				"purpose": "Share the remaining snacks equally among the students."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "direct-language-multiply-then-add",
+		"category": "direct_language",
+		"order_sensitive": true,
+		"should_decline": false,
+		"prompt": "A teacher buys 6 packs of pencils with 8 pencils in each pack and then buys 5 extra pencils. Create the tool plan to find the total number of pencils.",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "multiply",
+				"arguments": {
+					"a": 6,
+					"b": 8
+				},
+				"purpose": "Compute the number of pencils in the packs."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "add",
+				"arguments": {
+					"a": 48,
+					"b": 5
+				},
+				"purpose": "Add the extra pencils to the pack total."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "direct-language-subtract-then-divide",
+		"category": "direct_language",
+		"order_sensitive": true,
+		"should_decline": false,
+		"prompt": "A tank contains 90 liters of water. After removing 18 liters, divide the remaining water equally into 6 buckets. Plan the tool calls.",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "subtract",
+				"arguments": {
+					"a": 90,
+					"b": 18
+				},
+				"purpose": "Find the amount of water remaining after removal."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "divide",
+				"arguments": {
+					"a": 72,
+					"b": 6
+				},
+				"purpose": "Split the remaining water evenly into buckets."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "direct-equation-parentheses-times",
+		"category": "direct_equations",
+		"order_sensitive": true,
+		"should_decline": false,
+		"prompt": "Plan the tool calls needed to evaluate (18 + 7) * 4.",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "add",
+				"arguments": {
+					"a": 18,
+					"b": 7
+				},
+				"purpose": "Evaluate the expression inside the parentheses."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "multiply",
+				"arguments": {
+					"a": 25,
+					"b": 4
+				},
+				"purpose": "Multiply the parenthesized result by 4."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "direct-equation-power-minus",
+		"category": "direct_equations",
+		"order_sensitive": true,
+		"should_decline": false,
+		"prompt": "Plan the tool calls for 5 squared minus 11.",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "power",
+				"arguments": {
+					"base": 5,
+					"exponent": 2
+				},
+				"purpose": "Compute the square of 5."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "subtract",
+				"arguments": {
+					"a": 25,
+					"b": 11
+				},
+				"purpose": "Subtract 11 from the squared value."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "mixed-word-number-sum-then-divide",
+		"category": "mixed_word_and_number_form",
+		"order_sensitive": true,
+		"should_decline": false,
+		"prompt": "A fundraiser collected twenty four dollars on Monday and 16 dollars on Tuesday. The total was split equally among 4 teams. What is the tool plan?",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "add",
+				"arguments": {
+					"a": 24,
+					"b": 16
+				},
+				"purpose": "Add the amounts collected on both days."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "divide",
+				"arguments": {
+					"a": 40,
+					"b": 4
+				},
+				"purpose": "Split the total equally among the teams."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "mixed-word-number-product-then-difference",
+		"category": "mixed_word_and_number_form",
+		"order_sensitive": true,
+		"should_decline": false,
+		"prompt": "Leo bought three notebooks for 7 dollars each and then used a 5 dollar coupon. Plan the steps to find what he paid.",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "multiply",
+				"arguments": {
+					"a": 3,
+					"b": 7
+				},
+				"purpose": "Find the total cost before the coupon."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "subtract",
+				"arguments": {
+					"a": 21,
+					"b": 5
+				},
+				"purpose": "Subtract the coupon value from the total cost."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "order-flexible-two-products-then-add",
+		"category": "direct_language",
+		"order_sensitive": false,
+		"should_decline": false,
+		"prompt": "A farmer planted 6 rows of corn with 14 plants in each row and 5 rows of beans with 9 plants in each row. Plan the tool calls to find the total number of plants.",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "multiply",
+				"arguments": {
+					"a": 6,
+					"b": 14
+				},
+				"purpose": "Find the number of corn plants."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "multiply",
+				"arguments": {
+					"a": 5,
+					"b": 9
+				},
+				"purpose": "Find the number of bean plants."
+			},
+			{
+				"step_number": 3,
+				"tool_name": "add",
+				"arguments": {
+					"a": 84,
+					"b": 45
+				},
+				"purpose": "Add the corn and bean plants."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "order-flexible-two-sums-then-multiply",
+		"category": "mixed_word_and_number_form",
+		"order_sensitive": false,
+		"should_decline": false,
+		"prompt": "Morning classes used twelve boxes of crayons and 8 boxes of markers, while afternoon classes used 9 boxes of crayons and eleven boxes of markers. Each box has 10 items. Plan the tool calls to find the total number of items used.",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "add",
+				"arguments": {
+					"a": 12,
+					"b": 8
+				},
+				"purpose": "Find the total number of boxes used in the morning."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "add",
+				"arguments": {
+					"a": 9,
+					"b": 11
+				},
+				"purpose": "Find the total number of boxes used in the afternoon."
+			},
+			{
+				"step_number": 3,
+				"tool_name": "add",
+				"arguments": {
+					"a": 20,
+					"b": 20
+				},
+				"purpose": "Combine the morning and afternoon box totals."
+			},
+			{
+				"step_number": 4,
+				"tool_name": "multiply",
+				"arguments": {
+					"a": 40,
+					"b": 10
+				},
+				"purpose": "Convert the total number of boxes into total items."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "order-flexible-two-differences-then-add",
+		"category": "ambiguous_language",
+		"order_sensitive": false,
+		"should_decline": false,
+		"prompt": "A store started with 90 notebooks and sold 25, and it also started with 70 sketchbooks and sold 18. What plan should the agent follow to find how many items remain altogether?",
+		"expected_steps": [
+			{
+				"step_number": 1,
+				"tool_name": "subtract",
+				"arguments": {
+					"a": 90,
+					"b": 25
+				},
+				"purpose": "Find how many notebooks remain."
+			},
+			{
+				"step_number": 2,
+				"tool_name": "subtract",
+				"arguments": {
+					"a": 70,
+					"b": 18
+				},
+				"purpose": "Find how many sketchbooks remain."
+			},
+			{
+				"step_number": 3,
+				"tool_name": "add",
+				"arguments": {
+					"a": 65,
+					"b": 52
+				},
+				"purpose": "Add the remaining notebooks and sketchbooks."
+			}
+		],
+		"decline_reason": ""
+	},
+	{
+		"id": "decline-poem-request",
+		"category": "non_math_decline",
+		"order_sensitive": true,
+		"should_decline": true,
+		"prompt": "Write a short poem about winter rain.",
+		"expected_steps": [],
+		"decline_reason": "The query does not ask for a math solution or a tool-use math plan."
+	},
+	{
+		"id": "decline-definition-request",
+		"category": "non_math_decline",
+		"order_sensitive": true,
+		"should_decline": true,
+		"prompt": "Explain what photosynthesis is in simple terms.",
+		"expected_steps": [],
+		"decline_reason": "The query is explanatory and does not represent a math problem."
+	},
+	{
+		"id": "decline-personal-advice",
+		"category": "non_math_decline",
+		"order_sensitive": true,
+		"should_decline": true,
+		"prompt": "Help me decide whether I should move to a new city.",
+		"expected_steps": [],
+		"decline_reason": "The query asks for personal advice, not a math word problem."
+	},
+	{
+		"id": "decline-summarization",
+		"category": "non_math_decline",
+		"order_sensitive": true,
+		"should_decline": true,
+		"prompt": "Summarize the main idea of this meeting note.",
+		"expected_steps": [],
+		"decline_reason": "The query is a summarization task and should not trigger math planning."
+	},
+	{
+		"id": "decline-vague-non-math-ambiguous",
+		"category": "non_math_decline",
+		"order_sensitive": true,
+		"should_decline": true,
+		"prompt": "What should I do next with this project?",
+		"expected_steps": [],
+		"decline_reason": "The query is ambiguous but does not contain a math problem to solve with tools."
+	}
+]
