@@ -1,0 +1,102 @@
+[
+	{
+		"id": "equation-parentheses-then-multiply",
+		"prompt": "Plan the tool calls needed to evaluate (18 + 7) * 4.",
+		"expected_trace": [
+			{
+				"step_number": 1,
+				"tool_name": "add",
+				"arguments": {
+					"a": 18,
+					"b": 7
+				},
+				"output": 25
+			},
+			{
+				"step_number": 2,
+				"tool_name": "multiply",
+				"arguments": {
+					"a": 25,
+					"b": 4
+				},
+				"output": 100
+			}
+		],
+		"expected_final_output": 100
+	},
+	{
+		"id": "power-then-subtract",
+		"prompt": "What is 5 squared minus 11.",
+		"expected_trace": [
+			{
+				"step_number": 1,
+				"tool_name": "power",
+				"arguments": {
+					"base": 5,
+					"exponent": 2
+				},
+				"output": 25
+			},
+			{
+				"step_number": 2,
+				"tool_name": "subtract",
+				"arguments": {
+					"a": 25,
+					"b": 11
+				},
+				"output": 14
+			}
+		],
+		"expected_final_output": 14
+	},
+	{
+		"id": "word-problem-multiply-then-add",
+		"prompt": "A teacher buys 6 packs of pencils with 8 pencils in each pack and then buys 5 extra pencils. Create the tool plan to find the total number of pencils.",
+		"expected_trace": [
+			{
+				"step_number": 1,
+				"tool_name": "multiply",
+				"arguments": {
+					"a": 6,
+					"b": 8
+				},
+				"output": 48
+			},
+			{
+				"step_number": 2,
+				"tool_name": "add",
+				"arguments": {
+					"a": 48,
+					"b": 5
+				},
+				"output": 53
+			}
+		],
+		"expected_final_output": 53
+	},
+	{
+		"id": "word-problem-subtract-then-divide",
+		"prompt": "A tank contains 90 liters of water. After removing 18 liters, divide the remaining water equally into 6 buckets. Plan the tool calls.",
+		"expected_trace": [
+			{
+				"step_number": 1,
+				"tool_name": "subtract",
+				"arguments": {
+					"a": 90,
+					"b": 18
+				},
+				"output": 72
+			},
+			{
+				"step_number": 2,
+				"tool_name": "divide",
+				"arguments": {
+					"a": 72,
+					"b": 6
+				},
+				"output": 12
+			}
+		],
+		"expected_final_output": 12
+	}
+]
