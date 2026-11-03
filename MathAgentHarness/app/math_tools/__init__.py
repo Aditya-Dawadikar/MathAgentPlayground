@@ -4,7 +4,7 @@ See :mod:`app.math_tools.core` for the shared parsing rules and the
 result/error envelope every tool returns.
 """
 
-from . import applied, arithmetic, coordinate, equations, exponential, expressions, functions, polynomials
+from . import applied, arithmetic, coordinate, equations, exponential, expressions, functions, geometry, polynomials
 from .core import (
     MathToolError,
     Number,
@@ -28,6 +28,7 @@ TOOL_GROUPS: dict[str, list] = {
     "coordinate": coordinate.TOOLS,
     "exponential": exponential.TOOLS,
     "applied": applied.TOOLS,
+    "geometry": geometry.TOOLS,
 }
 
 ALL_TOOLS = [tool for group in TOOL_GROUPS.values() for tool in group]
