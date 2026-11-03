@@ -100,8 +100,7 @@ Commands: `/help`, `/reset` (forget the conversation), `/history` (what the agen
 
 Pasted text is cleaned up without changing its content:
 - Terminal escape codes (including bracketed-paste markers), stray control characters, tabs and Windows line endings are normalized.
-- Backslashes and quotes are kept as typed, so `rac` or a literal `
-` stays as it is.
+- Backslashes and quotes are kept as typed, so `\frac` or a literal `\n` stays as it is.
 - Unicode math is understood: `x²`, `×`, `÷`, `−`, `≤`, `≥`, `≠`, `π`, `√`, `½`.
 - Memory keeps the full text of recent problems, so follow-ups on long problems lose nothing.
 
