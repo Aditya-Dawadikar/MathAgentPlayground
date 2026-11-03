@@ -49,7 +49,7 @@ Rules:
 # Tests patch this mapping to inject flaky tools.
 TOOL_BY_NAME: dict[str, Any] = dict(TOOLS_BY_NAME)
 DEFAULT_REFERENCE_FIELD = "exact"
-REFERENCE_PATH = re.compile(r"\.([A-Za-z_]\w*)|\[(\d+)\]")
+REFERENCE_PATH = re.compile(r"\.([A-Za-z_]\w*)|\[(-?\d+)\]")
 VERIFY_TOOL = "verify_solution"
 
 
@@ -112,8 +112,10 @@ def resolve_references(value: Any, outputs: list[dict[str, Any]]) -> Any:
         if isinstance(found, (list, dict)):
             raise ReferenceResolutionError(f"{match.group(0)} is a list/object and cannot be used inside an expression")
         text = str(found)
-        # Simple non-negative atoms (5, 3/2 excluded) need no parentheses; anything else keeps precedence safe.
-        return text if re.fullmatch(r"[A-Za-z0-9_.]+", text) else f"({text})"
+        source, start, end = match.string, match.start(), match.end()
+        already_wrapped = source[:start].rstrip().endswith("(") and source[end:].lstrip().startswith(")")
+        # Simple non-negative atoms (5, x) need no parentheses; anything else keeps precedence safe.
+        return text if already_wrapped or re.fullmatch(r"[A-Za-z0-9_.]+", text) else f"({text})"
 
     return REFERENCE.sub(inline, value)
 
@@ -175,6 +177,40 @@ def _event(trace: list[dict[str, Any]], event_type: str, **payload: Any) -> None
     trace.append({"event_type": event_type, **_jsonable(payload)})
 
 
+def _final_answer(answer_step: dict[str, Any], trace: list[dict[str, Any]]) -> Any:
+    """Result of the answer step, narrowed to the roots the plan chose to verify.
+
+    If a solve step returned several solutions (w = -8 or w = 6) and the plan
+    verified only some of them afterwards (w = 6, because a width is positive),
+    the verified ones are the answer.
+    """
+    output = answer_step["output"]
+    result = output.get("result", "")
+    solutions = output.get("solutions")
+    variable = output.get("variable")
+    if not variable or not isinstance(solutions, list) or len(solutions) < 2:
+        return result
+    later = trace[trace.index(answer_step) + 1:]
+    chosen = []
+    for step in later:
+        if step["tool_name"] != VERIFY_TOOL or not step["output"].get("is_solution"):
+            continue
+        value = (step["arguments"].get("values") or {}).get(variable)
+        match = next((s for s in solutions if str(s) == str(value) or _same_number(s, value)), None)
+        if match is not None and match not in chosen:
+            chosen.append(match)
+    if not chosen or len(chosen) == len(solutions):
+        return result
+    return " or ".join(f"{variable} = {value}" for value in chosen)
+
+
+def _same_number(a: Any, b: Any) -> bool:
+    try:
+        return abs(float(a) - float(b)) < 1e-9
+    except (TypeError, ValueError):
+        return False
+
+
 class ExecutionTraceExecutor:
     def __init__(self, repairer: StepRepairer | None = None, on_event: Callable[[dict[str, Any]], None] | None = None):
         """``on_event`` is called with each event as it happens (used by the CLI to stream steps)."""
@@ -204,7 +240,7 @@ class ExecutionTraceExecutor:
             outputs.append(output)
 
         answer_steps = [t for t in trace if t["tool_name"] != VERIFY_TOOL] or trace
-        final_output = answer_steps[-1]["output"].get("result", "") if answer_steps else ""
+        final_output = _final_answer(answer_steps[-1], trace) if answer_steps else ""
         verifications = [t["output"].get("is_solution") for t in trace if t["tool_name"] == VERIFY_TOOL]
         verified = all(verifications) if verifications else None
         return self._finish(final_output, verified, events, trace, outputs)

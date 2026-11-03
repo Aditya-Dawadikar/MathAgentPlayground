@@ -261,3 +261,99 @@ def test_cli_no_color_flag(capsys, monkeypatch):
     monkeypatch.setenv("FORCE_COLOR", "1")
     cli.main(["-q", RECTANGLE_26, "--no-color"], session_factory=lambda repair: session(solve(RECTANGLE_26)))
     assert "\033[" not in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- multi-line / pasted input
+
+LONG_PROBLEM = (
+    "A rectangle's length is 3 more than its width\n"
+    "and its perimeter is 26.\n"
+    "What is its area?"
+)
+
+
+class CountdownPending:
+    """Pretends the next ``n`` lines are the rest of a paste."""
+
+    def __init__(self, n):
+        self.n = n
+
+    def __call__(self):
+        self.n -= 1
+        return self.n >= 0
+
+
+async def read_all(text, pending=None):
+    reader = cli.InputReader(io.StringIO(text), pending=pending, settle_seconds=0)
+    messages = []
+    while (message := await reader.read("you> ", "...> ")) is not None:
+        messages.append(message)
+    return messages
+
+
+@pytest.mark.asyncio
+async def test_reader_collects_pasted_lines_into_one_message():
+    assert await read_all(LONG_PROBLEM + "\n/exit\n", pending=CountdownPending(2)) == [LONG_PROBLEM, "/exit"]
+
+
+@pytest.mark.asyncio
+async def test_reader_triple_quote_block_and_backslash_continuation():
+    block = '"""\n' + LONG_PROBLEM + '\n"""\n'
+    assert await read_all(block) == [LONG_PROBLEM]
+    assert await read_all('"""Solve 2x + 3 = 11"""\n') == ["Solve 2x + 3 = 11"]
+    assert await read_all("Solve the system x + y = 10 \\\nand x - y = 2\n") == ["Solve the system x + y = 10\nand x - y = 2"]
+    # A literal backslash-n typed in the text is content, not a line break.
+    assert await read_all("Solve \\n stays as typed\n") == ["Solve \\n stays as typed"]
+    # Unterminated block ends at EOF instead of hanging or losing text.
+    assert await read_all('"""\nfirst line\nsecond line\n') == ["first line\nsecond line"]
+
+
+@pytest.mark.asyncio
+async def test_reader_without_paste_keeps_lines_as_separate_turns():
+    assert await read_all("Solve 2x = 4\n/history\n") == ["Solve 2x = 4", "/history"]
+
+
+def test_clean_input_strips_escapes_but_not_content():
+    pasted = "\x1b[200~Tickets cost $12 each.\r\n\tHow much for 7?\x07  \x1b[201~\n\n"
+    assert cli.clean_input(pasted) == "Tickets cost $12 each.\n    How much for 7?"
+    assert cli.clean_input(r'Solve \frac{x}{2} = 3, "exactly"') == r'Solve \frac{x}{2} = 3, "exactly"'
+    assert cli.clean_input("\x1b[31mred\x1b[0m text") == "red text"
+
+
+@pytest.mark.asyncio
+async def test_pasted_multi_line_problem_is_solved_and_remembered_in_full():
+    long_tail = " Assume every value is exact and show your work." * 20  # > 1000 characters
+    problem = LONG_PROBLEM + long_tail
+    chat = MathChatSession(FakeRouter(solve(RECTANGLE_26)), FakePlanner(PLANS), ExecutionTraceExecutor())
+    out = io.StringIO()
+    stream = io.StringIO(problem + "\n/exit\n")
+    await cli.run_chat(chat, cli.Renderer(out=out), reader=cli.InputReader(stream, pending=CountdownPending(2), settle_seconds=0))
+    assert chat.router.seen[0][0] == problem  # the router got the whole paste as one message
+    assert "Answer: 40" in out.getvalue()
+    assert long_tail.split()[-1] in chat.memory.summary() and "..." not in chat.memory.summary()
+
+
+@pytest.mark.asyncio
+async def test_scripted_multi_line_question_is_echoed_with_continuation():
+    out = io.StringIO()
+    await cli.run_chat(session(solve(RECTANGLE_26)), cli.Renderer(out=out), questions=[LONG_PROBLEM])
+    assert "you> A rectangle's length is 3 more than its width\n...> and its perimeter is 26.\n...> What is its area?" in out.getvalue()
+
+
+def test_cli_file_option(tmp_path, capsys):
+    problem_file = tmp_path / "problem.txt"
+    problem_file.write_text("﻿" + LONG_PROBLEM + "\n", encoding="utf-8")
+    chat = MathChatSession(FakeRouter(solve(RECTANGLE_26)), FakePlanner(PLANS), ExecutionTraceExecutor())
+    cli.main(["-f", str(problem_file), "--no-color"], session_factory=lambda repair: chat)
+    assert chat.router.seen[0][0] == LONG_PROBLEM
+    assert "Answer: 40" in capsys.readouterr().out
+
+
+def test_cli_turn_order_and_missing_file(tmp_path, capsys):
+    problem_file = tmp_path / "problem.txt"
+    problem_file.write_text(RECTANGLE_26, encoding="utf-8")
+    args = cli.parse_args(["-f", str(problem_file), "-q", "what if the perimeter were 30 instead?"])
+    assert args.turns == [RECTANGLE_26, "what if the perimeter were 30 instead?"]
+    with pytest.raises(SystemExit):
+        cli.parse_args(["-f", str(tmp_path / "missing.txt")])
+    assert "cannot read problem file" in capsys.readouterr().err

@@ -145,6 +145,7 @@ def solve_equation(equation: str, variable: str | None = None) -> dict:
                   complex_solutions=complex_roots, restrictions=excluded, steps=steps, variable=var)
     value = valid[0] if len(valid) == 1 else None
     envelope = ok(value, result=_format_solutions(var, valid), steps=steps, solution_type="finite", solutions=valid,
+                  positive_solutions=[v for v in valid if v.is_positive],
                   extraneous=extraneous, complex_solutions=complex_roots, restrictions=excluded, variable=var)
     if value is None:
         envelope["exact"] = [str(v) for v in valid]
@@ -183,6 +184,7 @@ def solve_quadratic(a: Number, b: Number, c: Number) -> dict:
     # "solutions" mirrors solve_equation (real solutions) so plans can use $step_N.solutions[i] with either tool.
     envelope = ok(None, result=_format_solutions(x, roots), steps=steps, roots=roots, discriminant=discriminant,
                   nature=nature, real_roots=real_roots, solutions=real_roots,
+                  positive_solutions=[r for r in real_roots if r.is_positive],
                   solution_type="finite" if real_roots else "none")
     envelope["exact"] = [str(r) for r in roots]
     envelope["decimal"] = [float(sp.N(r)) if r.is_real else None for r in roots]

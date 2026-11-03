@@ -64,6 +64,7 @@ python -m app.cli                                  # interactive
 python -m app.cli --model qwen3:8b                 # pick the planner model
 python -m app.cli --no-trace                       # answers only
 python -m app.cli --no-color                       # plain text (or set NO_COLOR=1)
+python -m app.cli -f problem.txt -q "what if the area were 160 m² instead?"   # problem from a file, then a follow-up
 python -m app.cli -q "Solve x^2 - 5x + 6 = 0" -q "what if the constant term were 4 instead?"   # scripted turns
 ```
 
@@ -91,6 +92,18 @@ I added 3 because the length of the rectangle is 3 more than its width ...
 ```
 
 Commands: `/help`, `/reset` (forget the conversation), `/history` (what the agent remembers), `/trace on|off`, `/exit`.
+
+**Long and multi-line problems.** Problems are never cut short:
+- **Paste** a multi-line word problem: the lines are collected into one message.
+- **Type** `"""` on its own line, then the problem, then `"""` again, or end a line with `\` to continue it.
+- **Load** a problem from a file with `-f problem.txt`. `-q` and `-f` turns run in the order you give them.
+
+Pasted text is cleaned up without changing its content:
+- Terminal escape codes (including bracketed-paste markers), stray control characters, tabs and Windows line endings are normalized.
+- Backslashes and quotes are kept as typed, so `rac` or a literal `
+` stays as it is.
+- Unicode math is understood: `x²`, `×`, `÷`, `−`, `≤`, `≥`, `≠`, `π`, `√`, `½`.
+- Memory keeps the full text of recent problems, so follow-ups on long problems lose nothing.
 
 Output is colour-coded in a terminal:
 - plan headings blue, tool names cyan, intermediate results green

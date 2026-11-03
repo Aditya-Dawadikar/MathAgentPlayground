@@ -4,6 +4,10 @@
     python -m app.cli -q "Solve 2x + 3 = 11" -q "what if it were 2x + 3 = 15?"   # scripted turns
     python -m app.cli --model qwen3:8b --no-trace
     python -m app.cli --no-color          # plain text (also NO_COLOR=1; FORCE_COLOR=1 forces color)
+    python -m app.cli -f problem.txt      # a (multi-line) problem from a file
+
+Multi-line input: paste a whole word problem (pasted lines are collected
+into one message), wrap it in triple quotes, or end lines with a backslash.
 
 Shows the plan, each tool step with its intermediate result, verification,
 and the final answer. Remembers earlier turns so follow-ups work.
@@ -14,16 +18,19 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import re
 import sys
 from typing import Any, Callable, TextIO
 
-HELP = """Commands:
+HELP = '''Commands:
   /help            show this help
   /reset           forget the conversation
   /history         show what the agent remembers
   /trace on|off    show or hide the step-by-step work
   /exit            quit (also /quit, Ctrl+D)
-Ask any math or word problem, then follow up: "what if ... instead?", "explain step 2"."""
+Ask any math or word problem, then follow up: "what if ... instead?", "explain step 2".
+Multi-line problems: just paste them, or type """ on its own line, the problem, then """ again.
+A line ending in a backslash continues on the next line.'''
 
 BANNER = "Math agent. Ask a math or word problem. /help for commands, /exit to quit."
 
@@ -40,7 +47,7 @@ STYLES = {
     "error": "31",         # red failures
     "warn": "33",          # yellow repairs, notices
     "answer": "1;32",      # bold green "Answer: ..."
-    "failed": "1;31",      # bold red "(verification FAILED)"
+    "failed": "1;31",      # bold red "(equation check FAILED)"
 }
 
 
@@ -69,6 +76,104 @@ def supports_color(stream: TextIO) -> bool:
     if os.getenv("TERM") == "dumb" or not hasattr(stream, "isatty") or not stream.isatty():
         return False
     return _enable_windows_vt(stream) if os.name == "nt" else True
+
+
+# CSI/OSC escape sequences (colors, cursor moves, bracketed-paste markers ESC[200~ / ESC[201~).
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]")
+BLOCK_DELIMITER = '"""'
+PASTE_SETTLE_SECONDS = 0.05
+
+
+def clean_input(text: str) -> str:
+    """Normalize pasted text without clipping it.
+
+    Removes terminal escape sequences and stray control characters, normalizes
+    line endings and tabs, trims trailing spaces and surrounding blank lines.
+    Backslashes and quotes in the problem itself are kept as typed.
+    """
+    text = _ANSI_ESCAPE.sub("", text)
+    text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\t", "    ").replace("\u00a0", " ")
+    text = "".join(ch for ch in text if ch == "\n" or ch.isprintable())
+    lines = [line.rstrip() for line in text.split("\n")]
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines)
+
+
+def _stdin_has_pending_input() -> bool:
+    """True if more keystrokes are already waiting (the rest of a paste)."""
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            return msvcrt.kbhit()
+        import select
+
+        return bool(select.select([sys.stdin], [], [], 0)[0])
+    except Exception:
+        return False
+
+
+class InputReader:
+    """Reads one user message, which may span several lines.
+
+    - A paste is collected into one message: after each line, if more input is
+      already waiting (interactive terminals only), it keeps reading.
+    - \"\"\" on its own line starts a block that ends at the next \"\"\".
+    - A line ending in a backslash continues on the next line.
+    """
+
+    def __init__(self, stream: TextIO = sys.stdin, pending: Callable[[], bool] | None = None,
+                 settle_seconds: float = PASTE_SETTLE_SECONDS):
+        self.stream = stream
+        interactive = stream is sys.stdin and sys.stdin.isatty()
+        self._pending = pending if pending is not None else (_stdin_has_pending_input if interactive else (lambda: False))
+        self._settle = settle_seconds if interactive or pending is not None else 0
+
+    async def _line(self, prompt: str) -> str | None:
+        return await _read_line(prompt, self.stream)
+
+    async def _more_pasted(self) -> bool:
+        if self._settle:
+            await asyncio.sleep(self._settle)  # let the terminal deliver the rest of the paste
+        return self._pending()
+
+    async def read(self, prompt: str, continuation: str) -> str | None:
+        first = await self._line(prompt)
+        if first is None:
+            return None
+        stripped = _ANSI_ESCAPE.sub("", first).strip()
+        if stripped.startswith(BLOCK_DELIMITER):
+            return clean_input(await self._read_block(stripped[len(BLOCK_DELIMITER):], continuation))
+        lines = [first]
+        while lines[-1].rstrip().endswith("\\"):
+            lines[-1] = lines[-1].rstrip()[:-1]
+            more = await self._line(continuation)
+            if more is None:
+                break
+            lines.append(more)
+        while await self._more_pasted():
+            more = await self._line("")
+            if more is None:
+                break
+            lines.append(more)
+        return clean_input("\n".join(lines))
+
+    async def _read_block(self, rest_of_first_line: str, continuation: str) -> str:
+        if rest_of_first_line.rstrip().endswith(BLOCK_DELIMITER):  # \"\"\"one-liner\"\"\"
+            return rest_of_first_line.rstrip()[: -len(BLOCK_DELIMITER)]
+        lines = [rest_of_first_line] if rest_of_first_line.strip() else []
+        while True:
+            line = await self._line(continuation)
+            if line is None:
+                break
+            if line.rstrip().endswith(BLOCK_DELIMITER):
+                lines.append(line.rstrip()[: -len(BLOCK_DELIMITER)])
+                break
+            lines.append(line)
+        return "\n".join(lines)
 
 
 def _format_value(value: Any) -> str:
@@ -143,8 +248,9 @@ class Renderer:
 
     def result(self, result) -> None:
         if result.kind == "solve":
-            check = {True: self.paint(" (verified)", "result"),
-                     False: self.paint(" (verification FAILED)", "failed")}.get(result.verified, "")
+            # "verified" means verify_solution plugged the solution back into the original equation.
+            check = {True: self.paint(" (equation check passed)", "result"),
+                     False: self.paint(" (equation check FAILED)", "failed")}.get(result.verified, "")
             if self.trace:
                 self.write()
             self.write(f"{self.paint('Answer:', 'answer')} {self.paint(result.reply, 'answer')}{check}")
@@ -211,13 +317,30 @@ async def ask(session, message: str, renderer: Renderer) -> None:
     renderer.result(result)
 
 
+def _is_command(message: str) -> bool:
+    return message.startswith("/") and "\n" not in message
+
+
+def _echo(renderer: Renderer, prompt: str, message: str) -> None:
+    first, *rest = message.split("\n")
+    renderer.write(f"{renderer.prompt(prompt)}{first}")
+    for line in rest:
+        renderer.write(f"{renderer.paint(CONTINUATION_PROMPT, 'muted')}{line}")
+
+
+CONTINUATION_PROMPT = "...> "
+
+
 async def run_chat(session, renderer: Renderer, questions: list[str] | None = None, stream: TextIO = sys.stdin,
-                   prompt: str = "you> ") -> None:
-    """Scripted turns when ``questions`` is given, otherwise read lines until /exit or EOF."""
+                   prompt: str = "you> ", reader: InputReader | None = None) -> None:
+    """Scripted turns when ``questions`` is given, otherwise read messages until /exit or EOF."""
     if questions:
         for question in questions:
-            renderer.write(f"{renderer.prompt(prompt)}{question}")
-            if question.startswith("/"):
+            question = clean_input(question)
+            if not question:
+                continue
+            _echo(renderer, prompt, question)
+            if _is_command(question):
                 if not await handle_command(question, session, renderer):
                     return
             else:
@@ -225,20 +348,21 @@ async def run_chat(session, renderer: Renderer, questions: list[str] | None = No
             renderer.write()
         return
 
+    reader = reader or InputReader(stream)
     renderer.write(renderer.paint(BANNER, "banner"))
     while True:
-        line = await _read_line(renderer.prompt(prompt), stream)
-        if line is None:
+        message = await reader.read(renderer.prompt(prompt), renderer.paint(CONTINUATION_PROMPT, "muted"))
+        if message is None:
             renderer.write()
             return
-        line = line.strip()
-        if not line:
+        message = message.strip()
+        if not message:
             continue
-        if line.startswith("/"):
-            if not await handle_command(line, session, renderer):
+        if _is_command(message):
+            if not await handle_command(message, session, renderer):
                 return
             continue
-        await ask(session, line, renderer)
+        await ask(session, message, renderer)
         renderer.write()
 
 
@@ -250,9 +374,20 @@ def _configure_environment(args: argparse.Namespace) -> None:
         os.environ[key] = args.model
 
 
+def _read_problem_file(path: str) -> str:
+    try:
+        with open(path, encoding="utf-8-sig") as handle:
+            return handle.read()
+    except (OSError, UnicodeDecodeError) as exc:
+        raise argparse.ArgumentTypeError(f"cannot read problem file {path!r}: {exc}") from exc
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="Interactive math chat with step-by-step reasoning.")
-    parser.add_argument("-q", "--question", action="append", help="Run these turns non-interactively (repeatable).")
+    # -q and -f share one list so turns run in the order they were given.
+    parser.add_argument("-q", "--question", action="append", dest="turns", help="Run this turn non-interactively (repeatable).")
+    parser.add_argument("-f", "--file", action="append", dest="turns", type=_read_problem_file,
+                        help="Read a whole (multi-line) problem from a file as one turn (repeatable).")
     parser.add_argument("--provider", choices=["ollama", "gemini"], help="Override LLM_PROVIDER.")
     parser.add_argument("--model", help="Model to use (sets OLLAMA_MODEL_2 or GEMINI_MODEL).")
     parser.add_argument("--no-trace", action="store_true", help="Only print final answers.")
@@ -274,7 +409,7 @@ def main(argv: list[str] | None = None, session_factory: Callable[..., Any] | No
     session = session_factory(repair=not args.no_repair)
     renderer = Renderer(trace=not args.no_trace, color=False if args.no_color else None)
     try:
-        asyncio.run(run_chat(session, renderer, questions=args.question))
+        asyncio.run(run_chat(session, renderer, questions=args.turns))
     except KeyboardInterrupt:
         renderer.write()
     return 0

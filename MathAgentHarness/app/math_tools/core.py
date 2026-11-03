@@ -114,6 +114,28 @@ _FUNCTIONS: dict[str, Any] = {
     "infinity": sp.oo,
 }
 
+# Unicode math that shows up in pasted word problems, mapped to parser syntax.
+_UNICODE_MATH = {
+    "\u00b2": "^2", "\u00b3": "^3", "\u00b9": "^1", "\u2070": "^0", "\u2074": "^4", "\u2075": "^5",
+    "\u00d7": "*", "\u22c5": "*", "\u00b7": "*", "\u2217": "*", "\u00f7": "/", "\u2044": "/", "\u2215": "/",
+    "\u2212": "-", "\u2013": "-", "\u2014": "-",
+    "\u2264": "<=", "\u2265": ">=", "\u2260": "!=", "\u03c0": "pi", "\u221e": "oo",
+    "\u00bd": "(1/2)", "\u2153": "(1/3)", "\u2154": "(2/3)", "\u00bc": "(1/4)", "\u00be": "(3/4)",
+    "\u00a0": " ", "\u2009": " ", "\u202f": " ",
+}
+_SQRT_GROUP = re.compile(r"\u221a\s*\(")
+_SQRT_ATOM = re.compile(r"\u221a\s*([A-Za-z0-9.]+)")
+
+
+def normalize_math_text(text: str) -> str:
+    """Rewrite unicode math (x\u00b2, \u00d7, \u00f7, \u2212, \u2264, \u03c0, \u221a, \u00bd) as parser syntax."""
+    text = _SQRT_GROUP.sub("sqrt(", text)
+    text = _SQRT_ATOM.sub(r"sqrt(\1)", text)
+    for symbol, replacement in _UNICODE_MATH.items():
+        text = text.replace(symbol, replacement)
+    return text
+
+
 _FORBIDDEN_CHARS = re.compile(r"[^A-Za-z0-9_\s+\-*/^().,=<>!]")
 _RELATION_SPLIT = re.compile(r"(<=|>=|!=|==|=|<|>)")
 _VARIABLE_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
@@ -140,7 +162,7 @@ def _local_namespace() -> dict[str, Any]:
 def _check_text(text: str, label: str) -> str:
     if not isinstance(text, str):
         raise MathToolError("invalid_input", f"{label} must be a string, got {type(text).__name__}")
-    text = text.strip()
+    text = normalize_math_text(text).strip()
     if not text:
         raise MathToolError("parse_error", f"{label} is empty")
     if len(text) > MAX_INPUT_LENGTH:

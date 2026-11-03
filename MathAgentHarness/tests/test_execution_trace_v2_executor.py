@@ -35,6 +35,8 @@ def test_resolve_references_whole_path_and_inline():
     assert resolve_references("$step_1", outputs) == "4"
     assert resolve_references("$step_1.solutions[0]", outputs) == 4
     assert resolve_references("$step_1.vertex", outputs) == [2, -1]
+    assert resolve_references("$step_1.vertex[-1]", outputs) == -1
+    assert resolve_references("2*($step_1.vertex[-1]) + 4", outputs) == "2*(-1) + 4"
     assert resolve_references("2*($step_1) + 1", outputs) == "2*(4) + 1"
     assert resolve_references("x - $step_1", [{"exact": "-3"}]) == "x - (-3)"  # negatives keep parentheses
     assert resolve_references("x * $step_1", [{"exact": "3/2"}]) == "x * (3/2)"
@@ -75,6 +77,26 @@ async def test_multi_step_word_problem_with_inline_reference():
     ))
     assert result["final_output"] == "40"
     assert result["verified"] is None
+
+
+@pytest.mark.asyncio
+async def test_final_answer_is_narrowed_to_verified_root():
+    result = await run(ExecutionTraceExecutor(), plan(
+        ("solve_equation", {"equation": "w(2w + 4) = 96"}),
+        ("verify_solution", {"equation": "w(2w + 4) = 96", "values": {"w": "$step_1.positive_solutions[0]"}}),
+    ))
+    assert result["final_output"] == "w = 6"
+    assert result["verified"] is True
+
+
+@pytest.mark.asyncio
+async def test_final_answer_keeps_all_roots_when_all_verified():
+    result = await run(ExecutionTraceExecutor(), plan(
+        ("solve_equation", {"equation": "x^2 - 5x + 6 = 0"}),
+        ("verify_solution", {"equation": "x^2 - 5x + 6 = 0", "values": {"x": "$step_1.solutions[0]"}}),
+        ("verify_solution", {"equation": "x^2 - 5x + 6 = 0", "values": {"x": "$step_1.solutions[1]"}}),
+    ))
+    assert result["final_output"] == "x = 2 or x = 3"
 
 
 @pytest.mark.asyncio

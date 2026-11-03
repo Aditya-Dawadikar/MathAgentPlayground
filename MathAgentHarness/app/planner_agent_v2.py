@@ -29,14 +29,20 @@ PLAN_CONTRACT = """{
     {
       "step_number": 1,
       "tool_name": "solve_equation",
-      "arguments": {"equation": "2x + 3 = 11"},
-      "purpose": "Solve the linear equation for x."
+      "arguments": {"equation": "w*(w + 2) = 48"},
+      "purpose": "Find the width w; the length is w + 2 and the area is 48."
     },
     {
       "step_number": 2,
       "tool_name": "verify_solution",
-      "arguments": {"equation": "2x + 3 = 11", "values": {"x": "$step_1.solutions[0]"}},
-      "purpose": "Check the solution in the original equation."
+      "arguments": {"equation": "w*(w + 2) = 48", "values": {"w": "$step_1.positive_solutions[0]"}},
+      "purpose": "A width must be positive, so check the positive solution in the original equation."
+    },
+    {
+      "step_number": 3,
+      "tool_name": "evaluate_expression",
+      "arguments": {"expression": "$step_1.positive_solutions[0] + 2"},
+      "purpose": "The question asks for the LENGTH, not the width, so compute length = w + 2."
     }
   ]
 }"""
@@ -61,7 +67,17 @@ Rules:
 - Points are [x, y] lists. Shape dimensions are objects such as {{"r": 3}}.
 - When a step needs an earlier result, do not compute it yourself; reference it:
   "$step_1" is step 1's exact result, "$step_1.solutions[0]" the first solution, "$step_2.roots" a list field.
+  "$step_1.solutions[-1]" is the last (largest) solution; solutions are sorted from smallest to largest.
+  "$step_1.positive_solutions[0]" is the first positive solution (solve_equation and solve_quadratic).
   References can appear inside expressions too: "2*($step_1) + 1".
+- To compute a value from earlier results (for example a length from a width), use evaluate_expression with references,
+  e.g. {{"expression": "2*($step_1.solutions[-1]) + 4"}}. There is no generic "arithmetic" or "calculator" tool.
+- For real-world quantities (lengths, areas, ages, counts, prices, times) use $step_N.positive_solutions[0]
+  instead of solutions[0], and say so in the step purpose.
+- The last step that is not verify_solution must produce exactly the quantity the question asks for.
+  The example asks for a length, so it ends with a computation. If the question asks for the solved
+  variable itself (e.g. "how wide is it?"), stop after verify_solution; if it asks for something derived
+  (length, area, total, cost), add an evaluate_expression step for it.
 - Prefer one specific tool over many arithmetic steps (solve_equation instead of manual rearranging).
 - After solving an equation or system, add a final verify_solution step that plugs the solution(s) into the ORIGINAL equation.
 - Set order_sensitive=false only when the steps are independent and can run in any order.
@@ -69,7 +85,7 @@ Rules:
 """
 
 # "$step_2", "$step_2.solutions[0]", "$step_1.vertex[1]" and the v1 form "result_of_step_2".
-REFERENCE = re.compile(r"\$step_(\d+)((?:\.[A-Za-z_]\w*|\[\d+\])*)|\bresult_of_step_(\d+)\b")
+REFERENCE = re.compile(r"\$step_(\d+)((?:\.[A-Za-z_]\w*|\[-?\d+\])*)|\bresult_of_step_(\d+)\b")
 
 
 class PlannerStep(BaseModel):

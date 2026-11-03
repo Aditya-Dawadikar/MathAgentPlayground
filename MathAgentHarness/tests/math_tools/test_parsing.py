@@ -110,3 +110,22 @@ def test_math_tool_times_out():
         return ok(sp.Integer(a))
 
     assert slow.invoke({"a": 1})["error"] == "timeout"
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("3x² − 2", 3 * x**2 - 2),        # superscript two, unicode minus
+        ("6 × 7 ÷ 2", sp.Integer(21)),      # times, divide
+        ("√(x + 1)", sp.sqrt(x + 1)),
+        ("√2 + 2π", sp.sqrt(2) + 2 * sp.pi),
+        ("½ x", x / 2),
+    ],
+)
+def test_unicode_math_from_pasted_text(text, expected):
+    assert sp.simplify(parse_expression(text) - expected) == 0
+
+
+def test_unicode_relations():
+    assert isinstance(parse_relation("2x − 1 ≤ 7"), sp.LessThan)
+    assert isinstance(parse_relation("x ≠ 3"), sp.Ne)

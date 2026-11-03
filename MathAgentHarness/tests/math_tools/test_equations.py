@@ -29,6 +29,12 @@ def test_solve_equation_happy(equation, solutions):
     assert [str(v) for v in out["solutions"]] == solutions
 
 
+def test_positive_solutions_for_real_world_quantities():
+    out = call(t.solve_equation, equation="w(2w + 4) = 96")
+    assert out["solutions"] == [-8, 6]
+    assert out["positive_solutions"] == [6]
+
+
 def test_solve_equation_rejects_extraneous_root():
     out = call(t.solve_equation, equation="sqrt(x + 2) = x")
     assert out["solutions"] == [2]
@@ -60,6 +66,7 @@ def test_solve_quadratic_two_real_roots():
     out = call(t.solve_quadratic, a=1, b=-5, c=6)
     assert out["roots"] == [2, 3]
     assert out["solutions"] == [2, 3]  # same field name as solve_equation
+    assert out["positive_solutions"] == [2, 3]
     assert out["discriminant"] == 1
     assert out["nature"].startswith("two distinct real roots")
 

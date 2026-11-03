@@ -1,34 +1,163 @@
 [
-  {"id": "what-if-new-perimeter", "turns": [
-    {"user": "A rectangle's length is 3 more than its width and its perimeter is 26. What is its area?", "kind": "solve", "expected_answers": ["40"]},
-    {"user": "what if the perimeter were 30 instead?", "kind": "solve", "expected_answers": ["54"]}
-  ]},
-  {"id": "find-another-quantity", "turns": [
-    {"user": "A rectangle's length is 3 more than its width and its perimeter is 26. What is its area?", "kind": "solve", "expected_answers": ["40"]},
-    {"user": "now find the length", "kind": "solve", "expected_answers": ["8"]}
-  ]},
-  {"id": "change-the-equation", "turns": [
-    {"user": "Solve x^2 - 5x + 6 = 0", "kind": "solve", "expected_answers": ["2", "3"]},
-    {"user": "what if the constant term were 4 instead?", "kind": "solve", "expected_answers": ["1", "4"]}
-  ]},
-  {"id": "word-problem-follow-up", "turns": [
-    {"user": "Tickets cost $12 each. How much do 7 tickets cost?", "kind": "solve", "expected_answers": ["84"]},
-    {"user": "and how much would 10 tickets cost?", "kind": "solve", "expected_answers": ["120"]}
-  ]},
-  {"id": "explain-previous-step", "turns": [
-    {"user": "Solve 2x + 3 = 11", "kind": "solve", "expected_answers": ["4"]},
-    {"user": "explain how you got that", "kind": "explain", "reply_contains": ["3", "2"]}
-  ]},
-  {"id": "sad-follow-up-without-context", "turns": [
-    {"user": "what if it were 30 instead?", "kind": "clarify"}
-  ]},
-  {"id": "sad-follow-up-after-reset", "turns": [
-    {"user": "A rectangle's length is 3 more than its width and its perimeter is 26. What is its area?", "kind": "solve", "expected_answers": ["40"]},
-    {"user": "/reset"},
-    {"user": "what if the perimeter were 30 instead?", "kind": "clarify"}
-  ]},
-  {"id": "sad-non-math-follow-up", "turns": [
-    {"user": "Solve 2x = 10", "kind": "solve", "expected_answers": ["5"]},
-    {"user": "what's a good movie to watch tonight?", "kind": "decline"}
-  ]}
+  {
+    "id": "what-if-new-perimeter",
+    "turns": [
+      {
+        "user": "A rectangle's length is 3 more than its width and its perimeter is 26. What is its area?",
+        "kind": "solve",
+        "expected_answers": [
+          "40"
+        ]
+      },
+      {
+        "user": "what if the perimeter were 30 instead?",
+        "kind": "solve",
+        "expected_answers": [
+          "54"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "find-another-quantity",
+    "turns": [
+      {
+        "user": "A rectangle's length is 3 more than its width and its perimeter is 26. What is its area?",
+        "kind": "solve",
+        "expected_answers": [
+          "40"
+        ]
+      },
+      {
+        "user": "now find the length",
+        "kind": "solve",
+        "expected_answers": [
+          "8"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "change-the-equation",
+    "turns": [
+      {
+        "user": "Solve x^2 - 5x + 6 = 0",
+        "kind": "solve",
+        "expected_answers": [
+          "2",
+          "3"
+        ]
+      },
+      {
+        "user": "what if the constant term were 4 instead?",
+        "kind": "solve",
+        "expected_answers": [
+          "1",
+          "4"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "word-problem-follow-up",
+    "turns": [
+      {
+        "user": "Tickets cost $12 each. How much do 7 tickets cost?",
+        "kind": "solve",
+        "expected_answers": [
+          "84"
+        ]
+      },
+      {
+        "user": "and how much would 10 tickets cost?",
+        "kind": "solve",
+        "expected_answers": [
+          "120"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "multi-line-pasted-problem",
+    "turns": [
+      {
+        "user": "A garden is shaped like a rectangle.\n\tIts length is 4 m more than twice its width.\nThe area of the garden is 96 m².\n\nHow wide is the garden?",
+        "kind": "solve",
+        "expected_answers": [
+          "6"
+        ]
+      },
+      {
+        "user": "what if the area were 160 m² instead?",
+        "kind": "solve",
+        "expected_answers": [
+          "8"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "explain-previous-step",
+    "turns": [
+      {
+        "user": "Solve 2x + 3 = 11",
+        "kind": "solve",
+        "expected_answers": [
+          "4"
+        ]
+      },
+      {
+        "user": "explain how you got that",
+        "kind": "explain",
+        "reply_contains": [
+          "3",
+          "2"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sad-follow-up-without-context",
+    "turns": [
+      {
+        "user": "what if it were 30 instead?",
+        "kind": "clarify"
+      }
+    ]
+  },
+  {
+    "id": "sad-follow-up-after-reset",
+    "turns": [
+      {
+        "user": "A rectangle's length is 3 more than its width and its perimeter is 26. What is its area?",
+        "kind": "solve",
+        "expected_answers": [
+          "40"
+        ]
+      },
+      {
+        "user": "/reset"
+      },
+      {
+        "user": "what if the perimeter were 30 instead?",
+        "kind": "clarify"
+      }
+    ]
+  },
+  {
+    "id": "sad-non-math-follow-up",
+    "turns": [
+      {
+        "user": "Solve 2x = 10",
+        "kind": "solve",
+        "expected_answers": [
+          "5"
+        ]
+      },
+      {
+        "user": "what's a good movie to watch tonight?",
+        "kind": "decline"
+      }
+    ]
+  }
 ]

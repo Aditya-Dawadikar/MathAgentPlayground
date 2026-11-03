@@ -12,6 +12,8 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 MAX_TEXT = 160
+# Recent turns keep the whole problem so follow-ups on long word problems lose nothing.
+MAX_PROBLEM_TEXT = 4000
 
 
 def _clip(text: Any, limit: int = MAX_TEXT) -> str:
@@ -88,10 +90,10 @@ class ConversationMemory:
             lines.extend(f"- {t.headline()}" for t in older)
         lines.append("Recent turns (oldest first):")
         for number, turn in enumerate(recent, start=len(older) + 1):
-            lines.append(f"Turn {number} user: {_clip(turn.user)}")
+            lines.append(f"Turn {number} user: {_clip(turn.user, MAX_PROBLEM_TEXT)}")
             if turn.kind == "solve":
                 if turn.problem and turn.problem != turn.user:
-                    lines.append(f"  interpreted as: {_clip(turn.problem, 300)}")
+                    lines.append(f"  interpreted as: {_clip(turn.problem, MAX_PROBLEM_TEXT)}")
                 for index, step in enumerate(turn.steps, start=1):
                     lines.append(f"  step {index}: {step.line()}" + (f"  # {_clip(step.purpose, 80)}" if step.purpose else ""))
                 check = {True: " (verified)", False: " (verification failed)"}.get(turn.verified, "")
