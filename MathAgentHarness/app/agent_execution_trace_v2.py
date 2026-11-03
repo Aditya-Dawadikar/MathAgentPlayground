@@ -111,7 +111,9 @@ def resolve_references(value: Any, outputs: list[dict[str, Any]]) -> Any:
         found = _lookup(match, outputs)
         if isinstance(found, (list, dict)):
             raise ReferenceResolutionError(f"{match.group(0)} is a list/object and cannot be used inside an expression")
-        return f"({found})"
+        text = str(found)
+        # Simple non-negative atoms (5, 3/2 excluded) need no parentheses; anything else keeps precedence safe.
+        return text if re.fullmatch(r"[A-Za-z0-9_.]+", text) else f"({text})"
 
     return REFERENCE.sub(inline, value)
 

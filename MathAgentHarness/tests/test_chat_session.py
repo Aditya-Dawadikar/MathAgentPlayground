@@ -229,3 +229,35 @@ def test_api_session_solve_and_delete(monkeypatch):
         assert (follow_up["reply"], follow_up["problem"]) == ("54", RECTANGLE_30)
         assert client.delete("/sessions/s1").json()["cleared"] is True
         assert client.delete("/sessions/s1").json()["cleared"] is False
+
+
+# ---------------------------------------------------------------- CLI colors
+
+
+@pytest.mark.asyncio
+async def test_cli_colors_when_enabled():
+    out = io.StringIO()
+    await cli.run_chat(session(solve(RECTANGLE_26)), cli.Renderer(out=out, color=True), questions=[RECTANGLE_26])
+    text = out.getvalue()
+    assert "\033[1;34mPlan (2 steps)\033[0m" in text          # heading
+    assert "\033[36msolve_equation\033[0m(" in text            # tool name
+    assert "-> \033[32mw = 5\033[0m" in text                   # intermediate result
+    assert "\033[1;32mAnswer:\033[0m \033[1;32m40\033[0m" in text
+    assert "\033[1;36myou> \033[0m" in text                    # prompt
+
+
+def test_cli_color_detection(monkeypatch):
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    assert cli.Renderer(out=io.StringIO()).color is False      # not a terminal
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    assert cli.Renderer(out=io.StringIO()).color is True
+    monkeypatch.setenv("NO_COLOR", "1")
+    assert cli.Renderer(out=io.StringIO()).color is False      # NO_COLOR wins
+    assert cli.Renderer(color=False).paint("x", "error") == "x"
+
+
+def test_cli_no_color_flag(capsys, monkeypatch):
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    cli.main(["-q", RECTANGLE_26, "--no-color"], session_factory=lambda repair: session(solve(RECTANGLE_26)))
+    assert "\033[" not in capsys.readouterr().out

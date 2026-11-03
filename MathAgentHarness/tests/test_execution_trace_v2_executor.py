@@ -35,7 +35,9 @@ def test_resolve_references_whole_path_and_inline():
     assert resolve_references("$step_1", outputs) == "4"
     assert resolve_references("$step_1.solutions[0]", outputs) == 4
     assert resolve_references("$step_1.vertex", outputs) == [2, -1]
-    assert resolve_references("2*($step_1) + 1", outputs) == "2*((4)) + 1"
+    assert resolve_references("2*($step_1) + 1", outputs) == "2*(4) + 1"
+    assert resolve_references("x - $step_1", [{"exact": "-3"}]) == "x - (-3)"  # negatives keep parentheses
+    assert resolve_references("x * $step_1", [{"exact": "3/2"}]) == "x * (3/2)"
     assert resolve_references({"values": {"x": "$step_1.solutions[0]"}}, outputs) == {"values": {"x": 4}}
     assert resolve_references("result_of_step_1", outputs) == "4"
 

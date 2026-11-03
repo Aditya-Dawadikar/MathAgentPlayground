@@ -63,6 +63,7 @@ Ask word problems in the terminal and see the agent's work: the plan, each tool 
 python -m app.cli                                  # interactive
 python -m app.cli --model qwen3:8b                 # pick the planner model
 python -m app.cli --no-trace                       # answers only
+python -m app.cli --no-color                       # plain text (or set NO_COLOR=1)
 python -m app.cli -q "Solve x^2 - 5x + 6 = 0" -q "what if the constant term were 4 instead?"   # scripted turns
 ```
 
@@ -90,6 +91,13 @@ I added 3 because the length of the rectangle is 3 more than its width ...
 ```
 
 Commands: `/help`, `/reset` (forget the conversation), `/history` (what the agent remembers), `/trace on|off`, `/exit`.
+
+Output is colour-coded in a terminal:
+- plan headings blue, tool names cyan, intermediate results green
+- purposes and notes dimmed, repairs and notices yellow, errors red
+- the final answer in bold green
+
+Colours turn off automatically when output is piped or redirected, or when `NO_COLOR` is set. `FORCE_COLOR=1` forces them on. Edit `STYLES` in `app/cli.py` to change the scheme.
 
 How it works (`app/chat_session.py`, `app/memory.py`):
 
