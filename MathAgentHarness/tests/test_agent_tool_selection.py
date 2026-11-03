@@ -109,6 +109,7 @@ def load_build_agent(agent_module_name):
 def agent_builder(pytestconfig):
     return load_build_agent(resolve_agent_module_name(pytestconfig))
 
+@pytest.mark.llm
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", TEST_CASES, ids=[c["id"] for c in TEST_CASES])
 async def test_agent_tool_selection(case, agent_builder):

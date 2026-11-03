@@ -82,6 +82,7 @@ def agent_builder(pytestconfig):
 def agent_system_prompt(pytestconfig):
     return load_default_system_prompt(resolve_agent_module_name(pytestconfig))
 
+@pytest.mark.llm
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", TEST_CASES, ids=[c["id"] for c in TEST_CASES])
 async def test_agent_tool_planning(case, agent_builder, agent_system_prompt):

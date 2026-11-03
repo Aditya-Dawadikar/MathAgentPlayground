@@ -81,6 +81,7 @@ def agent_module(pytestconfig):
 	return load_agent_module(resolve_agent_module_name(pytestconfig))
 
 
+@pytest.mark.llm
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", TEST_CASES, ids=[c["id"] for c in TEST_CASES])
 async def test_agent_execution_trace(case, agent_builder):
