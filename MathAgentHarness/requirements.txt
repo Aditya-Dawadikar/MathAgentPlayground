@@ -9,3 +9,4 @@ pydantic>=2.0.0
 openevals
 pytest
 pytest-xdist
+sympy>=1.13
