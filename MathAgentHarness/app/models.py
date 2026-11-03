@@ -25,6 +25,7 @@ class ExecutionTraceResponse(BaseModel):
     event_trace: list[dict[str, Any]]
     execution_trace: list[dict[str, Any]]
     final_output: Any
+    verified: Optional[bool] = None
 
 
 class ExecutionTraceFailureResponse(BaseModel):

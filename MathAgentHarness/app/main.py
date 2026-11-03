@@ -1,14 +1,17 @@
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+
+# Load .env before importing the agents: some settings are read at import time.
+load_dotenv()
+
+from fastapi import FastAPI, HTTPException  # noqa: E402
 from fastapi.responses import JSONResponse
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from agent_tool_call_correctness_v1 import build_agent
-from agent_execution_trace_v1 import ExecutionStepFailure, build_agent as build_execution_trace_agent
-from planner_agent_v1 import build_agent as build_planner_agent
-from models import (
+from app.agent_execution_trace_v2 import ExecutionStepFailure, build_agent as build_execution_trace_agent
+from app.agent_tool_call_correctness_v4 import build_agent
+from app.models import (
     ChatRequest,
     ChatResponse,
     ExecutionTraceFailureResponse,
@@ -16,8 +19,7 @@ from models import (
     ExecutionTraceResponse,
     PlanRequest,
 )
-
-load_dotenv()
+from app.planner_agent_v2 import build_agent as build_planner_agent
 
 _stateless_agent = None
 _stateful_agent = None
@@ -80,9 +82,9 @@ async def session_chat(session_id: str, req: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/plan", response_model=ChatResponse, summary="Stateless single-turn chat")
+@app.post("/plan", response_model=ChatResponse, summary="Plan the tool calls for a math problem")
 async def plan(req: PlanRequest):
-    """Send a message and get a response. No conversation history is retained."""
+    """Return a JSON tool-use plan for the problem without executing it."""
     messages = []
     if getattr(req, "system_prompt", None) is not None:
         messages.append(SystemMessage(content=req.system_prompt))
@@ -111,6 +113,7 @@ async def execution_trace(req: ExecutionTraceRequest):
             event_trace=result["event_trace"],
             execution_trace=result["execution_trace"],
             final_output=result["final_output"],
+            verified=result.get("verified"),
         )
     except ExecutionStepFailure as exc:
         failure = ExecutionTraceFailureResponse(

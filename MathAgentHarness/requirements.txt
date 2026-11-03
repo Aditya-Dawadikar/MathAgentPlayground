@@ -9,4 +9,7 @@ pydantic>=2.0.0
 openevals
 pytest
 pytest-xdist
+pytest-asyncio
 sympy>=1.13
+# Optional: needed for LLM_PROVIDER=gemini
+# langchain-google-genai

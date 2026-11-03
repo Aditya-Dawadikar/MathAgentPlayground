@@ -18,12 +18,12 @@ def extract_case_id(test_name):
 	return test_name[test_name.rfind("[") + 1 : -1]
 
 
-def build_pytest_command(workers, junit_xml_path, agent_module_name=None):
+def build_pytest_command(workers, junit_xml_path, agent_module_name=None, test_file=None):
 	command = [
 		sys.executable,
 		"-m",
 		"pytest",
-		str(TEST_FILE_PATH),
+		str(test_file or TEST_FILE_PATH),
 		"-n",
 		str(workers),
 		"--junitxml",
@@ -62,10 +62,10 @@ def parse_junit_results(junit_xml_path):
 	return results
 
 
-def run_once(run_index, workers, agent_module_name=None):
+def run_once(run_index, workers, agent_module_name=None, test_file=None):
 	with tempfile.TemporaryDirectory() as temp_dir:
 		junit_xml_path = Path(temp_dir) / f"planner-run-{run_index}.xml"
-		command = build_pytest_command(workers, junit_xml_path, agent_module_name)
+		command = build_pytest_command(workers, junit_xml_path, agent_module_name, test_file)
 		print(f"[run {run_index}] starting: {' '.join(command)}", flush=True)
 		start_time = time.perf_counter()
 		completed = subprocess.run(
@@ -105,7 +105,7 @@ def run_once(run_index, workers, agent_module_name=None):
 		}
 
 
-def run_experiment(runs, workers, agent_module_name=None):
+def run_experiment(runs, workers, agent_module_name=None, test_file=None):
 	run_summaries = []
 	case_counts = {}
 	print(
@@ -114,7 +114,7 @@ def run_experiment(runs, workers, agent_module_name=None):
 	)
 
 	for run_index in range(1, runs + 1):
-		run_summary = run_once(run_index, workers, agent_module_name)
+		run_summary = run_once(run_index, workers, agent_module_name, test_file)
 		run_summaries.append(run_summary)
 		print(
 			f"[run {run_index}] summary: {run_summary['passed']} passed, {run_summary['failed']} failed",
@@ -180,6 +180,11 @@ def parse_args():
 		default=None,
 		help="Python module path for the agent under test, for example app.planner_agent_v1.",
 	)
+	parser.add_argument(
+		"--test-file",
+		default=None,
+		help="Test file to run repeatedly (default tests/test_planner_agent.py), e.g. tests/test_math_agent_evals.py.",
+	)
 	return parser.parse_args()
 
 
@@ -189,6 +194,7 @@ def main():
 		runs=args.runs,
 		workers=args.workers,
 		agent_module_name=args.agent_module,
+		test_file=args.test_file,
 	)
 	print_summary(
 		case_counts=case_counts,

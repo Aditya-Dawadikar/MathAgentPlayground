@@ -319,6 +319,8 @@ def decimal_value(value: Any) -> float | None:
 def ok(value: Any = None, *, result: str | None = None, steps: list[str] | None = None, **extra: Any) -> dict[str, Any]:
     """Build the success envelope."""
     envelope: dict[str, Any] = {}
+    if value is sp.true or value is sp.false:
+        value = bool(value)
     if isinstance(value, sp.Basic):
         envelope["result"] = result if result is not None else str(value)
         envelope["exact"] = str(value)

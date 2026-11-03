@@ -5,16 +5,16 @@ import sys
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-TEST_MODULE_PATH = PROJECT_ROOT / "tests" / "test_calculator_agent.py"
+TEST_MODULE_PATH = PROJECT_ROOT / "tests" / "test_agent_tool_selection.py"
 
 
 def load_test_module():
-    spec = importlib.util.spec_from_file_location("test_calculator_agent", TEST_MODULE_PATH)
+    spec = importlib.util.spec_from_file_location("test_agent_tool_selection", TEST_MODULE_PATH)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
