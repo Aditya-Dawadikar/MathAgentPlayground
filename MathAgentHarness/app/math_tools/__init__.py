@@ -4,7 +4,7 @@ See :mod:`app.math_tools.core` for the shared parsing rules and the
 result/error envelope every tool returns.
 """
 
-from . import arithmetic
+from . import arithmetic, expressions
 from .core import (
     MathToolError,
     Number,
@@ -21,6 +21,7 @@ from .core import (
 # Populated by each tool category module.
 TOOL_GROUPS: dict[str, list] = {
     "arithmetic": arithmetic.TOOLS,
+    "expressions": expressions.TOOLS,
 }
 
 ALL_TOOLS = [tool for group in TOOL_GROUPS.values() for tool in group]
