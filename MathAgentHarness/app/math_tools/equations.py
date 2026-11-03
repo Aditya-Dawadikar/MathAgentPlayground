@@ -179,8 +179,11 @@ def solve_quadratic(a: Number, b: Number, c: Number) -> dict:
         f"discriminant = ({B})^2 - 4({A})({C}) = {discriminant}",
     ]
     x = sp.Symbol("x")
+    real_roots = [r for r in roots if r.is_real]
+    # "solutions" mirrors solve_equation (real solutions) so plans can use $step_N.solutions[i] with either tool.
     envelope = ok(None, result=_format_solutions(x, roots), steps=steps, roots=roots, discriminant=discriminant,
-                  nature=nature, real_roots=[r for r in roots if r.is_real])
+                  nature=nature, real_roots=real_roots, solutions=real_roots,
+                  solution_type="finite" if real_roots else "none")
     envelope["exact"] = [str(r) for r in roots]
     envelope["decimal"] = [float(sp.N(r)) if r.is_real else None for r in roots]
     return envelope

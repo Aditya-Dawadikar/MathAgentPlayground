@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Annotated, Any
+from typing import Annotated, Any, Callable
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
 from app.llm import build_chat_model
-from app.math_tools import TOOLS_BY_NAME, describe_tools
+from app.math_tools import TOOLS_BY_NAME, describe_tools, suggest_tools
 from app.planner_agent_v2 import DEFAULT_SYSTEM_PROMPT as PLANNER_SYSTEM_PROMPT
 from app.planner_agent_v2 import REFERENCE, Planner
 
@@ -41,6 +41,7 @@ Available tools:
 
 Rules:
 - Read the error message and fix the cause (wrong tool, wrong argument names, malformed expression).
+- tool_name must be exactly one of the tool names listed above (for example "add", never a heading like "arithmetic").
 - Keep the same intent as the original step. You may use $step_N references to earlier results.
 - Return JSON only: {{"tool_name": "...", "arguments": {{...}}, "reasoning": "short explanation"}}
 """
@@ -78,7 +79,8 @@ def _walk(value: Any, path: str, reference: str) -> Any:
         try:
             value = value[field] if field else value[int(index)]
         except (KeyError, IndexError, TypeError) as exc:
-            raise ReferenceResolutionError(f"cannot resolve {reference}: no {field or f'[{index}]'} in {value!r}") from exc
+            available = f"fields: {', '.join(value)}" if isinstance(value, dict) else f"{type(value).__name__} of length {len(value)}" if isinstance(value, list) else repr(value)
+            raise ReferenceResolutionError(f"cannot resolve {reference}: no {field or f'[{index}]'} ({available})") from exc
     return value
 
 
@@ -172,9 +174,16 @@ def _event(trace: list[dict[str, Any]], event_type: str, **payload: Any) -> None
 
 
 class ExecutionTraceExecutor:
-    def __init__(self, repairer: StepRepairer | None = None):
+    def __init__(self, repairer: StepRepairer | None = None, on_event: Callable[[dict[str, Any]], None] | None = None):
+        """``on_event`` is called with each event as it happens (used by the CLI to stream steps)."""
         self._max_step_retries = int(os.getenv("EXECUTOR_MAX_STEP_RETRIES", "2"))
         self._repairer = repairer
+        self.on_event = on_event
+
+    def _record(self, events: list[dict[str, Any]], event_type: str, **payload: Any) -> None:
+        _event(events, event_type, **payload)
+        if self.on_event is not None:
+            self.on_event(events[-1])
 
     async def __call__(self, state: ExecutionTraceState) -> ExecutionTraceState:
         plan = state["plan"]
@@ -182,10 +191,10 @@ class ExecutionTraceExecutor:
         events: list[dict[str, Any]] = []
         trace: list[dict[str, Any]] = []
         outputs: list[dict[str, Any]] = []
-        _event(events, "execution_started", step_count=len(plan["steps"]), order_sensitive=plan["order_sensitive"])
+        self._record(events, "execution_started", step_count=len(plan["steps"]), order_sensitive=plan["order_sensitive"])
 
         if plan["should_decline"]:
-            _event(events, "execution_declined", reason=plan["decline_reason"])
+            self._record(events, "execution_declined", reason=plan["decline_reason"])
             return self._finish(plan["decline_reason"], None, events, trace, outputs, declined=True)
 
         for step in plan["steps"]:
@@ -201,21 +210,22 @@ class ExecutionTraceExecutor:
     async def _run_step(self, step, problem, outputs, events, trace) -> dict[str, Any]:
         step_number = step["step_number"]
         tool_name, raw_arguments = step["tool_name"], step["arguments"]
-        _event(events, "step_started", step_number=step_number, tool_name=tool_name, arguments=raw_arguments, purpose=step.get("purpose", ""))
+        self._record(events, "step_started", step_number=step_number, tool_name=tool_name, arguments=raw_arguments, purpose=step.get("purpose", ""))
         last_error = ""
         attempts = self._max_step_retries + 1
         for attempt in range(1, attempts + 1):
-            _event(events, "step_attempt_started", step_number=step_number, attempt=attempt)
+            self._record(events, "step_attempt_started", step_number=step_number, attempt=attempt)
             try:
                 arguments = resolve_references(raw_arguments, outputs)
                 tool = TOOL_BY_NAME.get(tool_name)
                 if tool is None:
-                    raise LookupError(f"unknown tool {tool_name!r}")
-                _event(events, "tool_call_started", step_number=step_number, attempt=attempt, tool_name=tool_name, arguments=arguments)
+                    hint = suggest_tools(tool_name)
+                    raise LookupError(f"unknown tool {tool_name!r}" + (f"; use one of: {', '.join(hint)}" if hint else ""))
+                self._record(events, "tool_call_started", step_number=step_number, attempt=attempt, tool_name=tool_name, arguments=arguments)
                 output = tool.invoke(arguments)
             except Exception as exc:  # transient failures and bad references
                 last_error = f"{type(exc).__name__}: {exc}"
-                _event(events, "tool_call_failed", step_number=step_number, attempt=attempt, tool_name=tool_name, reason=last_error)
+                self._record(events, "tool_call_failed", step_number=step_number, attempt=attempt, tool_name=tool_name, reason=last_error)
                 if isinstance(exc, (ReferenceResolutionError, LookupError)) and not await self._try_repair(step, problem, outputs, events, {"error": "invalid_call", "message": last_error}):
                     break
                 tool_name, raw_arguments = step["tool_name"], step["arguments"]
@@ -224,18 +234,18 @@ class ExecutionTraceExecutor:
                 output = {"result": str(output), "exact": output}
             if "error" in output:
                 last_error = f"{output['error']}: {output.get('message', '')}"
-                _event(events, "tool_call_failed", step_number=step_number, attempt=attempt, tool_name=tool_name, reason=last_error)
+                self._record(events, "tool_call_failed", step_number=step_number, attempt=attempt, tool_name=tool_name, reason=last_error)
                 if attempt < attempts and await self._try_repair(step, problem, outputs, events, output):
                     tool_name, raw_arguments = step["tool_name"], step["arguments"]
                     continue
                 break
             entry = {"step_number": step_number, "tool_name": tool_name, "arguments": arguments, "output": output}
             trace.append(_jsonable(entry))
-            _event(events, "tool_call_succeeded", step_number=step_number, attempt=attempt, tool_name=tool_name, arguments=arguments, output=output)
-            _event(events, "step_completed", step_number=step_number, attempt=attempt, output=output.get("exact"))
+            self._record(events, "tool_call_succeeded", step_number=step_number, attempt=attempt, tool_name=tool_name, arguments=arguments, output=output)
+            self._record(events, "step_completed", step_number=step_number, attempt=attempt, output=output.get("exact"))
             return _jsonable(output)
 
-        _event(events, "step_exhausted_retries", step_number=step_number, tool_name=tool_name, attempts=attempt, reason=last_error)
+        self._record(events, "step_exhausted_retries", step_number=step_number, tool_name=tool_name, attempts=attempt, reason=last_error)
         raise ExecutionStepFailure(step_number=step_number, tool_name=tool_name, attempts=attempt, reason=last_error,
                                    event_trace=_jsonable(events), execution_trace=_jsonable(trace),
                                    intermediate_results=[o.get("exact") for o in outputs])
@@ -247,16 +257,19 @@ class ExecutionTraceExecutor:
         try:
             repaired = await self._repairer.repair(problem=problem, step=step, error=error, outputs=outputs)
         except Exception as exc:
-            _event(events, "step_repair_failed", step_number=step["step_number"], reason=f"{type(exc).__name__}: {exc}")
+            self._record(events, "step_repair_failed", step_number=step["step_number"], reason=f"{type(exc).__name__}: {exc}")
             return False
-        _event(events, "step_repaired", step_number=step["step_number"], tool_name=repaired.tool_name,
+        if repaired.tool_name == step["tool_name"] and repaired.arguments == step["arguments"]:
+            self._record(events, "step_repair_failed", step_number=step["step_number"], reason="the repair proposed the same failing call")
+            return False
+        self._record(events, "step_repaired", step_number=step["step_number"], tool_name=repaired.tool_name,
                arguments=repaired.arguments, reasoning=repaired.reasoning)
         step["tool_name"], step["arguments"] = repaired.tool_name, repaired.arguments
         return True
 
     def _finish(self, final_output, verified, events, trace, outputs, declined=False) -> ExecutionTraceState:
         if not declined:
-            _event(events, "execution_completed", final_output=final_output, verified=verified)
+            self._record(events, "execution_completed", final_output=final_output, verified=verified)
         return {
             "executor_system_prompt": EXECUTOR_SYSTEM_PROMPT,
             "intermediate_results": [o.get("exact") for o in outputs],

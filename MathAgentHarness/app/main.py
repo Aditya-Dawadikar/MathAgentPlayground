@@ -9,7 +9,10 @@ from fastapi import FastAPI, HTTPException  # noqa: E402
 from fastapi.responses import JSONResponse
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from dataclasses import asdict
+
 from app.agent_execution_trace_v2 import ExecutionStepFailure, build_agent as build_execution_trace_agent
+from app.chat_session import MathChatSession, build_session
 from app.agent_tool_call_correctness_v4 import build_agent
 from app.models import (
     ChatRequest,
@@ -18,6 +21,7 @@ from app.models import (
     ExecutionTraceRequest,
     ExecutionTraceResponse,
     PlanRequest,
+    SolveResponse,
 )
 from app.planner_agent_v2 import build_agent as build_planner_agent
 
@@ -25,6 +29,8 @@ _stateless_agent = None
 _stateful_agent = None
 _stateless_planner_agent = None
 _stateless_execution_trace_agent = None
+# Memory-aware step-by-step chat sessions, kept in process memory.
+_chat_sessions: dict[str, MathChatSession] = {}
 
 
 @asynccontextmanager
@@ -129,3 +135,25 @@ async def execution_trace(req: ExecutionTraceRequest):
         return JSONResponse(status_code=422, content=failure.model_dump())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post(
+    "/sessions/{session_id}/solve",
+    response_model=SolveResponse,
+    summary="Memory-aware step-by-step solving (follow-ups use earlier turns)",
+)
+async def session_solve(session_id: str, req: ChatRequest):
+    """Plan, execute and verify with conversation memory, like the CLI (python -m app.cli)."""
+    session = _chat_sessions.get(session_id)
+    if session is None:
+        session = _chat_sessions[session_id] = build_session()
+    try:
+        result = await session.ask(req.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return SolveResponse(session_id=session_id, **asdict(result))
+
+
+@app.delete("/sessions/{session_id}", summary="Forget a step-by-step chat session")
+async def delete_session(session_id: str):
+    return {"session_id": session_id, "cleared": _chat_sessions.pop(session_id, None) is not None}

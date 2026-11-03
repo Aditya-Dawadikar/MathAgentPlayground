@@ -4,6 +4,7 @@ Set ``LLM_PROVIDER`` to choose the backend:
 
 - ``ollama`` (default): uses ``OLLAMA_BASE_URL`` and per-role models
   ``OLLAMA_MODEL`` (agent), ``OLLAMA_MODEL_2`` (planner), ``OLLAMA_JUDGE_MODEL`` (judge).
+  ``OLLAMA_REASONING=true|false`` toggles thinking on models such as qwen3.
 - ``gemini``: uses ``langchain-google-genai`` with ``GOOGLE_API_KEY`` and
   ``GEMINI_MODEL`` (plus optional ``GEMINI_PLANNER_MODEL`` / ``GEMINI_JUDGE_MODEL``).
 """
@@ -40,6 +41,10 @@ def build_chat_model(role: Role = "agent", temperature: float | None = 0) -> Bas
         from langchain_ollama import ChatOllama
 
         kwargs = {"temperature": temperature} if temperature is not None else {}
+        reasoning = os.getenv("OLLAMA_REASONING", "").strip().lower()
+        if reasoning in ("true", "false"):
+            # Thinking models (qwen3, deepseek-r1): "false" is much faster for JSON planning.
+            kwargs["reasoning"] = reasoning == "true"
         return ChatOllama(
             model=model_name(role),
             base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),

@@ -37,3 +37,17 @@ class ExecutionTraceFailureResponse(BaseModel):
     intermediate_results: list[Any]
     event_trace: list[dict[str, Any]]
     execution_trace: list[dict[str, Any]]
+
+
+class SolveResponse(BaseModel):
+    """One memory-aware chat turn (see app.chat_session.ChatResult)."""
+
+    session_id: str
+    kind: str
+    reply: str
+    problem: str = ""
+    plan: Optional[dict[str, Any]] = None
+    execution_trace: list[dict[str, Any]] = []
+    event_trace: list[dict[str, Any]] = []
+    verified: Optional[bool] = None
+    error: Optional[dict[str, Any]] = None

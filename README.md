@@ -22,6 +22,17 @@ MathAgentPlayground/
 | `LocalLLM` | Builds an Ollama container, pulls `OLLAMA_MODEL`, and serves it on port `11434` | [LocalLLM/README.md](LocalLLM/README.md) |
 | `MathAgentHarness` | LangGraph agents served through FastAPI, with evaluation tests | [MathAgentHarness/README.md](MathAgentHarness/README.md) |
 
+## Interactive chat
+
+Ask word problems in the terminal and watch the agent work: the plan, each step's intermediate result, verification and the final answer. It remembers the conversation, so you can ask follow-ups like "what if the perimeter were 30 instead?" or "why did you add 3?".
+
+```powershell
+cd MathAgentHarness
+python -m app.cli --model qwen3:8b
+```
+
+See [MathAgentHarness/README.md](MathAgentHarness/README.md#interactive-chat-cli) for commands and how the memory works.
+
 ## Math tools
 
 `MathAgentHarness/app/math_tools/` contains 62 SymPy-backed tools covering arithmetic, expressions, equations and inequalities, polynomials, functions, coordinate geometry, exponents and logarithms, sequences, word problems, geometry and trigonometry. Every tool parses input through a sandbox and returns a JSON result or error envelope instead of raising. The equation solvers verify candidate roots and report extraneous ones. See [MathAgentHarness/README.md](MathAgentHarness/README.md#math-tools-appmath_tools) for the full list.

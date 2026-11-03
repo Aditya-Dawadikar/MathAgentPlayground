@@ -59,6 +59,7 @@ def test_solve_equation_no_real_solution_reports_complex():
 def test_solve_quadratic_two_real_roots():
     out = call(t.solve_quadratic, a=1, b=-5, c=6)
     assert out["roots"] == [2, 3]
+    assert out["solutions"] == [2, 3]  # same field name as solve_equation
     assert out["discriminant"] == 1
     assert out["nature"].startswith("two distinct real roots")
 

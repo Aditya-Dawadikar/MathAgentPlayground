@@ -66,14 +66,25 @@ def describe_tools(tools=None) -> str:
         entries = [t for t in group_tools if selected is None or t.name in selected]
         if not entries:
             continue
-        lines.append(f"{group}:")
+        lines.append(f"[{group} tools - the heading is not a tool name]")
         for t in entries:
             summary = (t.description or "").strip().splitlines()[0]
             lines.append(f"- {_signature(t)}: {summary}")
     return "\n".join(lines)
 
 
+def suggest_tools(name: str, limit: int = 5) -> list[str]:
+    """Valid tool names for a wrong one: a category's tools, or close spellings."""
+    import difflib
+
+    key = (name or "").strip().lower()
+    if key in TOOL_GROUPS:
+        return [t.name for t in TOOL_GROUPS[key]]
+    return difflib.get_close_matches(key, TOOL_NAMES, n=limit, cutoff=0.5)
+
+
 __all__ = [
+    "suggest_tools",
     "ALL_TOOLS",
     "TOOLS_BY_NAME",
     "TOOL_GROUPS",

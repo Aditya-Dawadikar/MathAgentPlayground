@@ -56,7 +56,7 @@ Rules:
 - If the query is not a math problem, set should_decline=true, give a short decline_reason, set steps=[] and order_sensitive=true.
 - Decline creative writing, summarization, explanations, general advice, brainstorming and vague requests without a concrete math problem.
 - Otherwise set should_decline=false and decline_reason="".
-- Use only the tool names listed above, with exactly the argument names shown.
+- Use only the tool names listed above, with exactly the argument names shown. Bracketed headings such as [arithmetic tools] are categories, not tools.
 - Write expressions and equations as strings using ^ for powers, e.g. "x^2 - 5x + 6 = 0". Numbers may be JSON numbers or exact strings like "1/3".
 - Points are [x, y] lists. Shape dimensions are objects such as {{"r": 3}}.
 - When a step needs an earlier result, do not compute it yourself; reference it:

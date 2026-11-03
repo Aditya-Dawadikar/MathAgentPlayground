@@ -27,6 +27,7 @@ Key settings in `.env`:
 | `EXECUTOR_MAX_STEP_RETRIES` | `2` | Retries per plan step |
 | `EXECUTOR_REPAIR` | `1` | Let the LLM repair a step whose tool returned an error |
 | `MATH_TOOL_TIMEOUT_SECONDS` | `10` | Abandon a tool call after this long |
+| `OLLAMA_REASONING` | unset | `false` turns off thinking on models such as `qwen3` (much faster JSON planning) |
 
 ## Run
 
@@ -44,6 +45,8 @@ Interactive API docs are at http://localhost:8000/docs.
 | `POST` | `/chat` | `agent_tool_call_correctness_v4` | Stateless single-turn chat with all math tools |
 | `POST` | `/sessions/{session_id}/chat` | `agent_tool_call_correctness_v4` | Multi-turn chat with in-memory history |
 | `POST` | `/plan` | `planner_agent_v2` | Returns a JSON tool-use plan, without executing it |
+| `POST` | `/sessions/{session_id}/solve` | `chat_session` | Step-by-step solving with conversation memory (follow-ups, explanations) |
+| `DELETE` | `/sessions/{session_id}` | | Forget a step-by-step chat session |
 | `POST` | `/execution-trace` | `agent_execution_trace_v2` | Plans, executes and verifies. Returns the plan, traces, `final_output` and `verified`. Returns `422` with partial traces if a step fails |
 
 ```powershell
@@ -51,6 +54,56 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:8000/execution-trace" `
   -ContentType "application/json" `
   -Body (@{ problem = "A rectangle's length is 3 more than its width and its perimeter is 26. What is its area?" } | ConvertTo-Json)
 ```
+
+## Interactive chat (CLI)
+
+Ask word problems in the terminal and see the agent's work: the plan, each tool step with its intermediate result, verification and the final answer. It remembers the conversation, so follow-ups work.
+
+```powershell
+python -m app.cli                                  # interactive
+python -m app.cli --model qwen3:8b                 # pick the planner model
+python -m app.cli --no-trace                       # answers only
+python -m app.cli -q "Solve x^2 - 5x + 6 = 0" -q "what if the constant term were 4 instead?"   # scripted turns
+```
+
+```
+you> A rectangle's length is 3 more than its width and its perimeter is 26. What is its area?
+Plan (2 steps)
+  1. solve_equation  Solve for the width (w) of the rectangle.
+  2. substitute      Calculate the area using the width found in step 1.
+
+Step 1  solve_equation(equation='2*(w + (w + 3)) = 26')
+        -> w = 5
+           - checked 1 candidate solution(s) in the original equation
+Step 2  substitute(expression='w*(w + 3)', values={'w': 5})
+        -> 40
+
+Answer: 40
+
+you> what if the perimeter were 30 instead?
+Interpreting as: A rectangle's length is 3 more than its width and its perimeter is 30. What is its area?
+...
+Answer: 54
+
+you> why did you add 3?
+I added 3 because the length of the rectangle is 3 more than its width ...
+```
+
+Commands: `/help`, `/reset` (forget the conversation), `/history` (what the agent remembers), `/trace on|off`, `/exit`.
+
+How it works (`app/chat_session.py`, `app/memory.py`):
+
+1. **Router.** One LLM call reads a compact memory summary and classifies the message:
+   - `solve`: a new problem, or a follow-up rewritten into a self-contained problem ("Interpreting as: ...")
+   - `explain`: answered from the recorded steps, with no tools
+   - `clarify`: a follow-up when there is nothing to follow up on
+   - `decline`: not math
+2. **Plan and execute.** Solve turns go through the v2 planner and executor. Steps are streamed to the terminal as they run.
+3. **Memory.** Each turn's interpretation, steps, answer and verification are stored. The last 4 turns are kept in detail and older ones as one-liners, and the oldest are dropped.
+
+The same memory is available over HTTP: `POST /sessions/{id}/solve` with `{"message": ...}`, and `DELETE /sessions/{id}` to forget a session.
+
+Tested with `qwen3:8b` on Ollama. For thinking models, set `OLLAMA_REASONING=false` so routing and planning stay fast.
 
 ## Math tools (`app/math_tools/`)
 
@@ -101,6 +154,7 @@ pytest -m "not llm"
 
 - `tests/math_tools/`: happy and sad paths for every tool category, plus tests for the eval comparator
 - `tests/test_execution_trace_v2_executor.py`: v2 executor reference resolution, verification, retries, repair and failure traces
+- `tests/test_chat_session.py`: chat memory, routing outcomes, follow-ups, explanations, declines, errors, the CLI (rendering, commands, interactive loop) and the session API, using a fake LLM
 
 LLM evals call a live model and are marked `llm`:
 
@@ -108,6 +162,7 @@ LLM evals call a live model and are marked `llm`:
 |------|---------|--------|
 | `test_math_agent_tool_selection.py` | `math_tool_selection_cases.json` | First tool call and *semantically equivalent* arguments, plus key facts in the final answer. Sad paths include non-math prompts, divide by zero and no-solution cases |
 | `test_math_agent_execution.py` | `math_execution_cases.json` | The final answer from the planner → executor, compared order-insensitively. Also checks that no verification step failed. Sad paths include declines, no solution and no real solution |
+| `test_math_chat_followups.py` | `math_followup_cases.json` | Multi-turn conversations: "what if ... instead?", "now find the length", "explain", and sad paths (follow-up with no context, after `/reset`, non-math) |
 | `test_agent_tool_selection.py`, `test_planner_agent.py`, `test_agent_execution_trace.py` | original datasets | Baseline arithmetic evals |
 
 ```powershell
